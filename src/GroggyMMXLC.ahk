@@ -101,7 +101,7 @@ class mmxlc
         If RegExMatch(txt, 'static version\s*:=\s*"(\d+.\d+)"', &match)
             If this.is_new_version(match.1, this.version)
                 this.update_available := 1
-        
+        MsgBox(this.url_main "`n" this.download_file "`ntxt: " txt)
         this.delete_file(this.download_file)
     }
     
