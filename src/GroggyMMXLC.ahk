@@ -94,10 +94,13 @@ class mmxlc
     
     static update_check() {
         this.update_available := 0
-        if !this.download(this.url_main, this.download_file)
+        this.delete_file(this.download_file)
+        If !this.download(this.url_main, this.download_file)
             return
-        
+        If !FileExist(this.download_file)
+            return
         txt := FileRead(this.download_file)
+        MsgBox(txt)
         If RegExMatch(txt, 'static version\s*:=\s*"(\d+.\d+)"', &match)
             If this.is_new_version(match.1, this.version)
                 this.update_available := 1
@@ -105,10 +108,10 @@ class mmxlc
         this.delete_file(this.download_file)
     }
     
-    ; Return false on download fail
+    ; Return false on download fail and suprresses errors
     static download(url, path) {
         try
-            Download(this.github_url, this.download_file)
+            Download(url, path)
         catch
             Return 0
         Return 1
