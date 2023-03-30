@@ -4,7 +4,7 @@ mmxlc.initialize()
 
 class mmxlc
 {
-    static version := "1.1"
+    static version := "1.2"
     
     ;static game_exe := "ahk_exe notepad.exe"
     static game_exe := "ahk_exe RXC1.exe"
