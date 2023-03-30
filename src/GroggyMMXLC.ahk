@@ -100,11 +100,9 @@ class mmxlc
         If !FileExist(this.download_file)
             return
         txt := FileRead(this.download_file)
-        MsgBox(txt)
         If RegExMatch(txt, 'static version\s*:=\s*"(\d+.\d+)"', &match)
             If this.is_new_version(match.1, this.version)
                 this.update_available := 1
-        MsgBox(this.url_main "`n" this.download_file "`ntxt: " txt)
         this.delete_file(this.download_file)
     }
     
@@ -117,8 +115,9 @@ class mmxlc
         Return 1
     }
     
-    static run_update() {
+    static run_update(*) {
         MsgBox("Starting update!")
+        ExitApp()
         this.delete_file(this.updater_file)
         
         If !this.Download(this.url_main, this.download_file)        ; Get file
