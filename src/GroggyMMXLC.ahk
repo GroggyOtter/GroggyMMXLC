@@ -1,15 +1,14 @@
-#Requires AutoHotkey >=2.0
-mmxlc.initialize()
 *+Esc::ExitApp()
+mmxlc.initialize()
 
 class mmxlc
 {
-    static version := "1.2"
+    #Requires AutoHotkey >=2.0
+    static version := "1.1"
     
     ;static game_exe := "ahk_exe notepad.exe"
     static game_exe := "ahk_exe RXC1.exe"
     static title := "Groggy MMXLC"
-    static update_available := 0
     static default_save := "_default"
     
     static github_url := "https://raw.githubusercontent.com/GroggyOtter/GroggyMMXLC/main"
@@ -42,17 +41,20 @@ class mmxlc
         ,Jump     :{name:"Jump"            ,game_key:"x"     ,user_key:"Numpad2"     ,col:0 ,row:5 }
         ,Dash     :{name:"Dash"            ,game_key:"a"     ,user_key:"Numpad6"     ,col:0 ,row:6 }
         ,Alt      :{name:"Alt Wep"         ,game_key:"s"     ,user_key:"Numpad8"     ,col:0 ,row:7 }
-        ,WepLeft  :{name:"Wep Left"        ,game_key:"c"     ,user_key:"Numpad7"     ,col:0 ,row:8 }
-        ,WepRight :{name:"Wep Right"       ,game_key:"d"     ,user_key:"Numpad9"     ,col:0 ,row:9 }
+        ,WepLeft  :{name:"Weapon Left"     ,game_key:"c"     ,user_key:"Numpad7"     ,col:0 ,row:8 }
+        ,WepRight :{name:"Weapon Right"    ,game_key:"d"     ,user_key:"Numpad9"     ,col:0 ,row:9 }
         ,Select   :{name:"Select"          ,game_key:"Esc"   ,user_key:"Numpad0"     ,col:0 ,row:10} 
         ,Start    :{name:"Menu/Start"      ,game_key:"Space" ,user_key:"NumpadEnter" ,col:0 ,row:11}
         ,Giga     :{name:"Giga (X4 Only)"  ,game_key:"v"     ,user_key:"Numpad5"     ,col:0 ,row:12} 
-        ,Menu     :{name:"MMXLC Menu"      ,game_key:"Tab"   ,user_key:"Tab"         ,col:0 ,row:13} }
+        ,Menu     :{name:"MMXLC Menu"      ,game_key:"Tab"   ,user_key:"Tab"         ,col:0 ,row:13} 
+        ,_gui     :{name:"GUI Hide/Show"   ,game_key:"F1"    ,user_key:"F1"          ,col:0 ,row:14} }
     
     static modifier_map := Map("+","Shift"
                               ,"!","Alt"
                               ,"^","Control"
                               ,"#","LWin" )
+    
+    static update_available := 0
     
     ; === Methods() ===
     static initialize() {
@@ -117,7 +119,6 @@ class mmxlc
     
     static run_update(*) {
         MsgBox("Starting update!")
-        ExitApp()
         this.delete_file(this.updater_file)
         
         If !this.Download(this.url_main, this.download_file)        ; Get file
@@ -137,6 +138,7 @@ class mmxlc
         ExitApp()                                                   ; Terminate script
     }
     
+    ; Creates quoted and spaced args
     static args(arr*) {
         str := ""
         For k, v in arr
@@ -181,7 +183,7 @@ class mmxlc
         
         ; Gui creation start
         gw  := (hk_w * 2 + txt_w) * col + (margin * col + margin)
-        gh  := margin2 + (def_h + spacer) * row + btn_buff + btn_def_h
+        gh  := margin2 + (def_h + spacer) * row +  + btn_buff + btn_def_h
         opt := "+AlwaysOnTop -Caption +Border"
         goo := Gui(opt, this.title)
         goo.MarginX := margin
@@ -221,6 +223,8 @@ class mmxlc
             ; Add user hotkey box
             x := margin + (v.col * (action_w + margin))
             y := margin + txt_h + (v.row * (hk_h + spacer))
+            if (k = "_gui")
+                y += hk_h
             opt := this.make_whxy(hk_w, hk_h, x, y, "0x200 Border")
             con := goo.AddHotkey(opt, v.user_key)
             con.SetFont("Bold")
@@ -259,6 +263,7 @@ class mmxlc
             con.OnEvent("Click", obm)
             con.name := "up"
             this.update_button := con
+            this.update_button.visible := this.update_available
             ; if !this.update_available
             ;     con.Visible := 0
             
@@ -308,23 +313,22 @@ class mmxlc
         if (name = "")
             name := this.default_save
         
-        data := this.load(name, "saves")
+        data := this.load("saves", name)
         
-        ; redo this
-        ; loop parse data, "`n", "`r"
-        ;     arr := StrSplit(A_LoopField, "||")
-        ;     ,this.control_obj.%arr[1]%.user_key := arr[2]
+        For k, v in StrSplit(data, "  ")
+        {
+            RegExMatch(v, "(.+?)->(.+)", &match)
+            id := match.1
+            this.control_obj.%id%.user_key := match.2
+        }
     }
     
     static save_config(name:="") {
-        if (name = "")
-            name := this.default_save
+        (name = "") ? name := this.default_save : 0
         
-        data := ''
-        ; update this to 1 line saves
-        ; For k, v in this.control_obj.OwnProps()
-        ;     data .= k "||" v.user_key "`n"
-        ; data := RTrim(Data, "`n") '"'
+        data := ""
+        For k, v in this.control_obj.OwnProps()
+            data .= (A_Index > 1 ? "  " : "") k "->" v.user_key
         
         this.save("saves", name, data)
         MsgBox("check ini file for save")
@@ -336,7 +340,6 @@ class mmxlc
         For id, v in this.control_obj.OwnProps()
             If (v.user_key = new_key)
                 this.control_obj.%id%.user_key := this.control_obj.%new_id%.user_key
-                
     }
     
     static single_modifier_check(key) {
@@ -347,20 +350,44 @@ class mmxlc
     
     static update_hotkey(id, hkcon, last) {
         MsgBox("id: " id "`nhkcon.value: " hkcon.value)
-        ;key := this.single_modifier_check(hkcon.value)
-        ;this.dupe_hotkey_prevent(key, id)
-        ;this.hotkey_disable(this.control_obj.%id%.user_key, this.game_exe)
-        ;this.hotkey_enable(hkcon.value, obm, this.game_exe)
+        key := this.single_modifier_check(hkcon.value)
+        this.dupe_hotkey_prevent(key, id)
+        this.hotkey_disable(this.control_obj.%id%.user_key, this.game_exe)
+        this.hotkey_enable(key, this.game_exe)
     }
     
     static hotkey_disable(key, win:="") {
         HotIfWinactive(win)
         Hotkey("*" key, "Off")
+        Hotkey("*" key " Up", "Off")
     }
     
-    static hotkey_enable(key, callback, win:="") {
-        HotIfWinactive(this.game_exe)
-        Hotkey("*" key, "Off")
+    static hotkey_enable(key, win:="", up:=1) {
+        HotIfWinactive(win)
+        obm := ObjBindMethod(this, "remapper", key, "Down")
+        Hotkey("*" key, obm, "On")
+        If (up)
+            obm := ObjBindMethod(this, "remapper", key, "Up")
+            ,Hotkey("*" key " Up", obm, "On")
+    }
+    
+    static make_hotkeys() {
+        ; F1: Hide/show MMXLC GUI
+            HotIf()
+            obm := ObjBindMethod(this, "toggle_gui")
+            Hotkey("$*F1", obm)
+        
+        ; Hide/show key remap window?
+        
+        ; Create game hotkeys
+            For k, v in this.control_obj.OwnProps()
+            {
+                
+                this.hotkey_enable(v.game_key, this.game_exe)
+            }
+        ; test key
+        ; obm := ObjBindMethod(this, "test")
+        ; Hotkey("$*F4", obm)
     }
     
     static get_col_row(&col, &row) {
@@ -373,16 +400,12 @@ class mmxlc
     
     static load_gui_pos() {
         w := h := 0
-        x := this.load("gui", "x")
-        y := this.load("gui", "y")
-        
-        If !IsNumber(x)
-            x := 0
-        If !IsNumber(y)
-            y := 0
-        this.mmxlcgui.GetPos(,, &w, &h)
-        
-        this.mmxlcgui.Show(this.make_whxy(w, h, x, y))
+        ,x := this.load("gui", "x")
+        ,y := this.load("gui", "y")
+        ,!IsNumber(x) ? x := 0 : 0
+        ,!IsNumber(y) ? y := 0 : 0
+        ,this.mmxlcgui.GetPos(,, &w, &h)
+        ,this.mmxlcgui.Show(this.make_whxy(w, h, x, y))
     }
     
     static save_gui_pos() {
@@ -452,30 +475,6 @@ class mmxlc
         If (MsgBox("Quit " this.title "?", "Confirm Exit", 0x40004) = "yes")
             this.save_config()
             ,ExitApp()
-    }
-    
-    static make_hotkeys() {
-        ; F1: Hide/show MMXLC GUI
-            HotIf()
-            obm := ObjBindMethod(this, "toggle_gui")
-            arr := [this.game_exe, "ahk_id " this.mmxlcgui.Hwnd]
-            for i, v in arr
-                HotIfWinactive(v)
-                ,Hotkey("$*F1", obm)
-        
-        ; Hide/show key remap window?
-        
-        ; Create game hotkeys
-            HotIfWinactive(this.game_exe)
-            For k, v in this.control_obj.OwnProps()
-                obm := ObjBindMethod(this, "remapper", v.game_key, "Down")
-                ,Hotkey("*" v.user_key, obm, "On")
-                ,obm := ObjBindMethod(this, "remapper", v.game_key, "Up")
-                ,Hotkey("*" v.user_key " Up", obm, "On")
-        
-        ; test key
-        ; obm := ObjBindMethod(this, "test")
-        ; Hotkey("$*F4", obm)
     }
     
     static delete_file(f) {
