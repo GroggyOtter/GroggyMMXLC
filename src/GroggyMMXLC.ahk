@@ -97,13 +97,13 @@ class mmxlc
     static update_check() {
         this.update_available := 0
         this.delete_file(this.download_file)
-        If !this.download(this.url_main, this.download_file)
+        if !this.download(this.url_main, this.download_file)
             return
-        If !FileExist(this.download_file)
+        if !FileExist(this.download_file)
             return
         txt := FileRead(this.download_file)
-        If RegExMatch(txt, 'static version\s*:=\s*"(\d+.\d+)"', &match)
-            If this.is_new_version(match.1, this.version)
+        if RegExMatch(txt, 'static version.*?(\d+.\d+)', &match)
+            if this.is_new_version(match.1, this.version)
                 this.update_available := 1
         this.delete_file(this.download_file)
     }
@@ -149,9 +149,11 @@ class mmxlc
     static is_new_version(new, current) {
         n := StrSplit(new, ".")
         c := StrSplit(current, ".")
+        
         Loop n.Length
             if (n[A_Index] > c[A_Index])
                 return 1
+        
         return 0
     }
     
@@ -478,7 +480,9 @@ class mmxlc
     }
     
     static delete_file(f) {
-        FileExist(f) ? FileDelete(f) : 0
+        While FileExist(f)
+            FileDelete(f)
+            ,Sleep(1)
     }
     
     static remapper(game_key, state, arr*) {
