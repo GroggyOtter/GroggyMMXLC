@@ -46,8 +46,11 @@ class mmxlc
         ,Select   :{name:"Select"          ,game_key:"Esc"   ,user_key:"Numpad0"     ,col:0 ,row:10} 
         ,Start    :{name:"Menu/Start"      ,game_key:"Space" ,user_key:"NumpadEnter" ,col:0 ,row:11}
         ,Giga     :{name:"Giga (X4 Only)"  ,game_key:"v"     ,user_key:"Numpad5"     ,col:0 ,row:12} 
-        ,Menu     :{name:"MMXLC Menu"      ,game_key:"Tab"   ,user_key:"Tab"         ,col:0 ,row:13} 
-        ,_gui     :{name:"GUI Hide/Show"   ,game_key:"F1"    ,user_key:"F1"          ,col:0 ,row:14} }
+        ,Menu     :{name:"MMXLC Menu"      ,game_key:"Tab"   ,user_key:"Tab"         ,col:0 ,row:13} }
+    
+    static control_spc :=
+        {rapid   :{name:"Rapid Fire"       ,callback:"rapid_fire" ,user_key:"Numpad1"     ,col:0 ,row:14}
+        ,gui     :{name:"GUI Hide/Show"    ,callback:"toggle_gui" ,user_key:"F1"          ,col:0 ,row:15} }
     
     static modifier_map := Map("+","Shift"
                               ,"!","Alt"
@@ -168,6 +171,8 @@ class mmxlc
         def_h       := 20
         btn_def_h   := 100
         btn_buff    := 80
+        hk_buff     := 30
+        
         ; Hotkey
         hk_w        := 120
         hk_h        := def_h
@@ -225,8 +230,8 @@ class mmxlc
             ; Add user hotkey box
             x := margin + (v.col * (action_w + margin))
             y := margin + txt_h + (v.row * (hk_h + spacer))
-            if (k = "_gui")
-                y += hk_h
+            if InStr(k, "_")
+                y += hk_buff
             opt := this.make_whxy(hk_w, hk_h, x, y, "0x200 Border")
             con := goo.AddHotkey(opt, v.user_key)
             con.SetFont("Bold")
