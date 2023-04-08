@@ -3,7 +3,9 @@ mmxlc.initialize()
 
 class mmxlc
 {
-    #Requires AutoHotkey >=2.0
+    #Requires AutoHotkey >2.0
+    #SingleInstance Force
+    
     static version := "1.1"
     
     ;static game_exe := "ahk_exe notepad.exe"
@@ -20,7 +22,6 @@ class mmxlc
         ,download :A_AppData "\GroggyMMXLC\download"
         ,images   :A_AppData "\GroggyMMXLC\images"}
     static data_file => this.paths.main "\data.ini"
-    static main_file => this.paths.main "\GroggyMMXLC.ahk"
     static updater_file => this.paths.download "\updater.ahk"
     static download_file => this.paths.download "\github.ahk"
     
@@ -121,7 +122,6 @@ class mmxlc
     }
     
     static run_update(*) {
-        MsgBox("Starting update!")
         this.delete_file(this.updater_file)
         
         If !this.Download(this.url_main, this.download_file)        ; Get file
@@ -131,7 +131,7 @@ class mmxlc
         
         args := this.args(DllCall("GetCurrentProcessId")            ; Build args
             , this.download_file
-            , this.main_file )
+            , A_ScriptFullPath)
         
         If !FileExist(this.download_file)                           ; Verify updater exists
             return MsgBox("Could not run updater")
@@ -150,12 +150,19 @@ class mmxlc
     }
     
     static is_new_version(new, current) {
+        new := ""
         n := StrSplit(new, ".")
         c := StrSplit(current, ".")
         
+        for i, num in n
+            if (num > c[i])
+            
         Loop n.Length
             if (n[A_Index] > c[A_Index])
                 return 1
+            else if (n[A_Index] = c[A_Index])
+                continue
+            Else return 0
         
         return 0
     }
