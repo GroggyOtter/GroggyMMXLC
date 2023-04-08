@@ -7,7 +7,7 @@ class mmxlc
     #SingleInstance Force
     
     static version := "1.1"
-    
+    ; 
     ;static game_exe := "ahk_exe notepad.exe"
     static game_exe := "ahk_exe RXC1.exe"
     static title := "Groggy MMXLC"
@@ -50,8 +50,8 @@ class mmxlc
         ,Menu     :{name:"MMXLC Menu"      ,game_key:"Tab"   ,user_key:"Tab"         ,col:0 ,row:13} }
     
     static control_spc :=
-        {rapid   :{name:"Rapid Fire"       ,callback:"rapid_fire" ,user_key:"Numpad1"     ,col:0 ,row:14}
-        ,gui     :{name:"GUI Hide/Show"    ,callback:"toggle_gui" ,user_key:"F1"          ,col:0 ,row:15} }
+        {rapid   :{name:"Rapid Fire"       ,callback:"rapid_fire" ,user_key:"Numpad1",col:0 ,row:14}
+        ,gui     :{name:"GUI Hide/Show"    ,callback:"toggle_gui" ,user_key:"F1"     ,col:0 ,row:15} }
     
     static modifier_map := Map("+","Shift"
                               ,"!","Alt"
@@ -69,7 +69,7 @@ class mmxlc
         this.image_check()                      ; Acquire images
         this.update_check()                     ; Check for possible update
         this.make_gui()                         ; Build gui
-        this.make_hotkeys()                     ; Create hotkeys
+        this.initialize_hotkeys()               ; Create hotkeys
         this.load_config()                      ; Load last used config
     }
     
@@ -81,23 +81,64 @@ class mmxlc
         IniWrite(data, this.data_file, section, key)
     }
     
+    ; Loads config from ini file
+    static load_config(name := "") {
+        if (name = "")
+            name := this.default_save
+        
+        data := this.load("saves", name)
+        
+        For k, v in StrSplit(data, "  ")
+        {
+            RegExMatch(v, "(.+?)->(.+)", &match)
+            id := match.1
+            this.control_obj.%id%.user_key := match.2
+        }
+    }
+    
+    ; Saves config to ini file
+    static save_config(name:="") {
+        (name = "") ? name := this.default_save : 0
+        
+        data := ""
+        For k, v in this.control_obj.OwnProps()
+            data .= (A_Index > 1 ? "  " : "") k "->" v.user_key
+        
+        this.save("saves", name, data)
+        MsgBox("check ini file for save")
+        ExitApp()
+    }
+    
+    ; Verify paths exist or make them
     static path_check() {
         For k, path in this.paths.OwnProps()
             If !DirExist(path)
                 DirCreate(path)
     }
     
+    ; Verify data file exists
     static data_check() {
         FileExist(this.data_file) ? 0
             : FileAppend("; " this.title " Data File", this.data_file)
     }
     
+    ; Verify images have bene downloaded
     static image_check() {
         for k, img in this.pics.OwnProps()
             if !FileExist(img.path)
                 Download(img.url, img.path)    
     }
     
+    ; On download fail, suppress error and return 0
+    static download(url, path) {
+        try
+            Download(url, path)
+        catch
+            Return 0
+        Return 1
+    }
+    
+    ; Check current github version for updates
     static update_check() {
         this.update_available := 0
         this.delete_file(this.download_file)
@@ -112,15 +153,7 @@ class mmxlc
         this.delete_file(this.download_file)
     }
     
-    ; Return false on download fail and suprresses errors
-    static download(url, path) {
-        try
-            Download(url, path)
-        catch
-            Return 0
-        Return 1
-    }
-    
+    ; Download new version from github
     static run_update(*) {
         this.delete_file(this.updater_file)
         
@@ -141,7 +174,7 @@ class mmxlc
         ExitApp()                                                   ; Terminate script
     }
     
-    ; Creates quoted and spaced args
+    ; Spacing/quotation formatting for script args
     static args(arr*) {
         str := ""
         For k, v in arr
@@ -149,6 +182,8 @@ class mmxlc
         return str
     }
     
+    ; Check if the new variable is an update from current
+    ; Example: 2.0.0 < 2.0.2
     static is_new_version(new, current) {
         new := ""
         n := StrSplit(new, ".")
@@ -167,6 +202,7 @@ class mmxlc
         return 0
     }
     
+    ; Generate main gui
     static make_gui() {
         col := row := 0
         this.get_col_row(&col, &row)
@@ -306,6 +342,7 @@ class mmxlc
         this.load_gui_pos()
     }
     
+    ; Creates shadowed text effect on gui elements
     static add_shadow_text(gobj, con_in, extra_opt, txt, gf) {
         w := h := x := y := 0
         ,con_in.GetPos(&x, &y, &w, &h)
@@ -319,34 +356,9 @@ class mmxlc
         return con
     }
     
+    ; Formats gui width/height/x/y/extra options
     static make_whxy(w, h, x, y, extra:="") {
         return "w" w " h" h " x" x " y" y " " extra
-    }
-    
-    static load_config(name := "") {
-        if (name = "")
-            name := this.default_save
-        
-        data := this.load("saves", name)
-        
-        For k, v in StrSplit(data, "  ")
-        {
-            RegExMatch(v, "(.+?)->(.+)", &match)
-            id := match.1
-            this.control_obj.%id%.user_key := match.2
-        }
-    }
-    
-    static save_config(name:="") {
-        (name = "") ? name := this.default_save : 0
-        
-        data := ""
-        For k, v in this.control_obj.OwnProps()
-            data .= (A_Index > 1 ? "  " : "") k "->" v.user_key
-        
-        this.save("saves", name, data)
-        MsgBox("check ini file for save")
-        ExitApp()
     }
     
     ; Prevents user from using the same key for 2 things
@@ -356,12 +368,15 @@ class mmxlc
                 this.control_obj.%id%.user_key := this.control_obj.%new_id%.user_key
     }
     
+    ; Turns modifier symbol into real key name
     static single_modifier_check(key) {
         if this.modifier_map.has(key)
             return this.modifier_map[key]
         return key
     }
     
+    ; Runs when user changes a hotkey
+    ; Duplication check, unregister previous hotkey, set new hotkey
     static update_hotkey(id, hkcon, last) {
         MsgBox("id: " id "`nhkcon.value: " hkcon.value)
         key := this.single_modifier_check(hkcon.value)
@@ -385,7 +400,7 @@ class mmxlc
             ,Hotkey("*" key " Up", obm, "On")
     }
     
-    static make_hotkeys() {
+    static initialize_hotkeys() {
         ; F1: Hide/show MMXLC GUI
             HotIf()
             obm := ObjBindMethod(this, "toggle_gui")
@@ -395,15 +410,14 @@ class mmxlc
         
         ; Create game hotkeys
             For k, v in this.control_obj.OwnProps()
-            {
-                
                 this.hotkey_enable(v.game_key, this.game_exe)
-            }
+        
         ; test key
         ; obm := ObjBindMethod(this, "test")
         ; Hotkey("$*F4", obm)
     }
     
+    ; Get max columns and rows from control object
     static get_col_row(&col, &row) {
         for k, v in this.control_obj.OwnProps()
              (v.col > col) ? col := v.col : 0
@@ -412,6 +426,7 @@ class mmxlc
         row++
     }
     
+    ; Restores stored gui position
     static load_gui_pos() {
         w := h := 0
         ,x := this.load("gui", "x")
@@ -422,6 +437,7 @@ class mmxlc
         ,this.mmxlcgui.Show(this.make_whxy(w, h, x, y))
     }
     
+    ; Saves current gui position
     static save_gui_pos() {
         x := y := 0
         this.mmxlcgui.GetPos(&x, &y)
@@ -429,6 +445,8 @@ class mmxlc
         this.save("gui", "y", y)
     }
     
+    ; Fires whenever the mouse moves across main gui
+    ; Used for click+drag movement as well as gui position saving    
     static WM_MOUSEMOVE(wparam, lparam, msg, hwnd) {
         static save_flag := 0
         ; Click+Drag functionality
@@ -456,6 +474,7 @@ class mmxlc
         ;else ToolTip()
     }
     
+    ; Pop up/hide image effect on the update button
     static update_hover_switch(con_hwnd) {
         If (this.update_button.name = "up")
         && (this.update_button.hwnd = con_hwnd)
@@ -479,12 +498,14 @@ class mmxlc
         this.mmxlcgui.Hide()
     }
     
+    ; Launch Mega Man X Legacy Collection
     static launchmmx(*) {
         If !WinExist(this.game_exe)
             Run("steam://rungameid/743890")
         Else WinActivate(this.game_exe)
     }
     
+    ; Quit confirmation + settings save
     static quit(*) {
         If (MsgBox("Quit " this.title "?", "Confirm Exit", 0x40004) = "yes")
             this.save_config()
@@ -492,11 +513,11 @@ class mmxlc
     }
     
     static delete_file(f) {
-        While FileExist(f)
+        If FileExist(f)
             FileDelete(f)
-            ,Sleep(1)
     }
     
+    ; Convert user input to game input
     static remapper(game_key, state, arr*) {
         SendInput("{" game_key " " state "}")
     }
